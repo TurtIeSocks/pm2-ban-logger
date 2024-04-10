@@ -2,33 +2,25 @@ import { WebhookClient, APIEmbed } from 'discord.js'
 import stripAnsi from 'strip-ansi'
 import { ObliviousSet } from 'oblivious-set'
 
-import { Data, Message, Role } from './types'
+import { Data, LogInfo, Message } from './types'
 
-const AUTHOR = {
-  name: 'PM2',
-  icon_url:
-    'https://cdn2.opsmatters.com/sites/default/files/logos/pm2-thumb.png',
-}
-
-export class DiscordLogger extends WebhookClient {
+export class LiveBans extends WebhookClient {
   messages: Record<string, Data[]>
   buffer: Message[]
-  role: Role
   color: number
 
   private cache: ObliviousSet<string> = new ObliviousSet(30_000)
   private bannedAccountRegex = /Account (\S+) marked as banned/
-  private activityTimeRegex = /(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \[.*\] User (\S+) .*Active Time (\d+\.\d+)/;
+  private activityTimeRegex =
+    /(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \[.*\] User (\S+) .*Active Time (\d+\.\d+)/
 
-  constructor(url: string, role: Role) {
+  constructor(url: string) {
     super({ url })
     this.messages = {}
     this.buffer = []
-    this.role = role
-    this.color =
-      role === 'log' ? 0x00ff00 : role === 'error' ? 0xff0000 : 0x0000ff
+    this.color = 0x00ff00
 
-    console.log(`DiscordLogger: ${role} client created`)
+    console.log(`pm2-ban-logger: live ban log client created`)
   }
 
   static getTitle(data: Data) {
@@ -44,12 +36,19 @@ export class DiscordLogger extends WebhookClient {
   }
 
   getEmbeds(): APIEmbed[] {
-    return Object.entries(this.messages).map(([name, logs]) => ({
-      title: name || 'Unknown Process',
-      color: this.color,
-      description: logs.map((log) => DiscordLogger.ensureString(log.data) || 'No data provided').join('\n'),
-      timestamp: new Date().toISOString(),
-    }))
+    return Object.entries(this.messages).flatMap(([name, [data]]) => {
+      const safeDesc = LiveBans.ensureString(data.data) || ''
+      const chunks = safeDesc.match(/[\s\S]{1,4095}/g)
+      if (!chunks) {
+        return []
+      }
+      return chunks.map((chunk) => ({
+        title: name || 'Unknown Process',
+        color: 0x0000ff,
+        description: chunk,
+        timestamp: new Date().toISOString(),
+      }))
+    })
   }
 
   async sendMessages() {
@@ -61,30 +60,37 @@ export class DiscordLogger extends WebhookClient {
     this.messages = {}
   }
 
-  pushToBuffer(data: Data) {
+  pushToBuffer(data: Data): LogInfo | null {
     if (data.process.name === 'pm2-ban-logger') {
-      return
+      return null
     }
-    const message = stripAnsi(DiscordLogger.ensureString(data.data))
+    const message = stripAnsi(LiveBans.ensureString(data.data))
     const matchOne = message.match(this.bannedAccountRegex)
     if (matchOne) {
       this.cache.add(matchOne[1])
-      return
+      return null
     }
     const matchTwo = message.match(this.activityTimeRegex)
     if (matchTwo) {
       const [, timestamp, account, activeTime] = matchTwo
       if (this.cache.has(account)) {
         const seconds = parseFloat(activeTime) / 1000
-        const [_date, time] = timestamp.split(' ', 2);
+        const [_date, time] = timestamp.split(' ', 2)
+        const process = LiveBans.getTitle(data)
         this.buffer.push({
-          process: { name: DiscordLogger.getTitle(data) },
+          process: { name: process },
           data: `${time} ${account} banned in ${seconds.toFixed(2)}s`,
           at: Date.now(),
         })
-        return
+        return {
+          account,
+          activeTime: seconds,
+          timestamp: new Date(`${_date}T${time}`),
+          process,
+        }
       }
     }
+    return null
   }
 
   collectLogs() {

@@ -5,10 +5,20 @@ export interface Config {
    * */
   buffer_seconds?: number
   /**
+   * Duration in seconds to aggregate stats.
+   * @default 15
+   * */
+  stats_minutes?: number
+  /**
    * Discord webhook url for logs
    * @default null
    * */
   log_url: string | null
+  /**
+   * Discord webhook url for stats embeds
+   * @default null
+   */
+  stats_url: string | null
 }
 
 export interface Data {
@@ -37,4 +47,9 @@ export interface Message extends Data {
   data: string
 }
 
-export type Role = 'log' | 'error' | 'event'
+export interface LogInfo {
+  account: string
+  activeTime: number
+  timestamp: Date
+  process: string
+}

@@ -20,10 +20,20 @@ interface Config {
    * */
   buffer_seconds?: number
   /**
+   * Duration in seconds to aggregate stats.
+   * @default 15
+   * */
+  stats_minutes?: number
+  /**
    * Discord webhook url for logs
    * @default null
    * */
   log_url: string | null
+  /**
+   * Discord webhook url for stats embeds
+   * @default null
+   */
+  stats_url: string | null
 }
 ```
 
@@ -36,6 +46,8 @@ interface Config {
 ```bash
   pm2 set pm2-ban-logger:buffer_seconds 1
   pm2 set pm2-ban-logger:log_url https://discordapp.com/api/webhooks/123456789/abcdefghijklmnopqrstuvwxyz
+  pm2 set pm2-ban-logger:stats_minutes 15
+  pm2 set pm2-ban-logger:stats_url https://discordapp.com/api/webhooks/123456789/abcdefghijklmnopqrstuvwxyz
 ```
 
 4. You can set the same or different webhook for each channel but logs will not be recorded if the webhook is not set.
