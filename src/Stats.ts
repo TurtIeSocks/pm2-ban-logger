@@ -10,7 +10,7 @@ export class Stats extends WebhookClient {
     super({ url })
     this.color = 0x0000ff
     this.stats = {}
-    console.log(`pm2-ban-logger: Summary client created`)
+    console.log(`pm2-ban-logger: Stats client created`)
   }
 
   getEmbeds(): APIEmbed[] {
@@ -55,13 +55,11 @@ export class Stats extends WebhookClient {
           value: lessThanOneHour.toLocaleString(),
         })
       }
-      const date = new Date()
       return {
         title: name,
         color: this.color,
-        description: `Hourly Summary for the hour: ${date.getHours()}`,
         fields,
-        timestamp: date.toISOString(),
+        timestamp: new Date().toISOString(),
       }
     })
   }
