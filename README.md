@@ -34,8 +34,8 @@ interface Config {
 3. e.g:
 
 ```bash
+  pm2 set pm2-ban-logger:buffer_seconds 1
   pm2 set pm2-ban-logger:log_url https://discordapp.com/api/webhooks/123456789/abcdefghijklmnopqrstuvwxyz
-  pm2 set pm2-ban-logger:restart true
 ```
 
 4. You can set the same or different webhook for each channel but logs will not be recorded if the webhook is not set.
