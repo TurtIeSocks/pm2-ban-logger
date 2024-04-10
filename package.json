@@ -1,6 +1,6 @@
 {
   "name": "pm2-ban-logger",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "PM2 Ban Logger",
   "main": "dist/app.js",
   "author": "Derick M. <58572875+TurtIeSocks@users.noreply.github.com>",
