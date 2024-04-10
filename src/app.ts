@@ -1,6 +1,7 @@
 import pm2 from 'pm2'
 import io from '@pm2/io'
 import { DiscordLogger } from './Discord'
+
 import { Config, Data } from './types'
 
 io.initModule({}, (err: Error) => {

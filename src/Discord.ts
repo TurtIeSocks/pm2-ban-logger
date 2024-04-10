@@ -1,7 +1,8 @@
 import { WebhookClient, APIEmbed } from 'discord.js'
 import stripAnsi from 'strip-ansi'
-import { Data, Message, Role } from './types'
 import { ObliviousSet } from 'oblivious-set'
+
+import { Data, Message, Role } from './types'
 
 const AUTHOR = {
   name: 'PM2',
