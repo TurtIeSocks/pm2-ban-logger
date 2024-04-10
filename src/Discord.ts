@@ -11,18 +11,18 @@ const AUTHOR = {
 }
 
 export class DiscordLogger extends WebhookClient {
-  messages: APIEmbed[]
+  messages: Record<string, Data[]>
   buffer: Message[]
   role: Role
   color: number
 
   private cache: ObliviousSet<string> = new ObliviousSet(30_000)
-  private bannedAccountRegex = /.*marked as banned.*Account (\S+)/
-  private activityTimeRegex = /User (\S+) .*Active Time (\d+\.\d+)/
+  private bannedAccountRegex = /Account (\S+) marked as banned/
+  private activityTimeRegex = /(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \[.*\] User (\S+) .*Active Time (\d+\.\d+)/;
 
   constructor(url: string, role: Role) {
     super({ url })
-    this.messages = []
+    this.messages = {}
     this.buffer = []
     this.role = role
     this.color =
@@ -43,36 +43,22 @@ export class DiscordLogger extends WebhookClient {
     return typeof data === 'string' ? data : JSON.stringify(data)
   }
 
-  createMessage(
-    data: Data,
-    title?: string,
-    description?: string,
-    timestamp?: number
-  ) {
-    const safeDesc = description || DiscordLogger.ensureString(data.data) || ''
-    const chunks = safeDesc.match(/[\s\S]{1,4095}/g)
-    if (chunks) {
-      chunks.forEach((chunk, i) => {
-        const message: APIEmbed = {
-          title: `${title || DiscordLogger.getTitle(data)}${
-            chunks.length > 1 ? ` (${i + 1}/${chunks.length})` : ''
-          }`,
-          description: chunk,
-          author: AUTHOR,
-          timestamp: new Date(timestamp || data.at).toISOString(),
-          color: this.color,
-        }
-        this.messages.push(message)
-      })
-    }
+  getEmbeds(): APIEmbed[] {
+    return Object.entries(this.messages).map(([name, logs]) => ({
+      title: name || 'Unknown Process',
+      color: this.color,
+      description: logs.map((log) => DiscordLogger.ensureString(log.data) || 'No data provided').join('\n'),
+      timestamp: new Date().toISOString(),
+    }))
   }
 
   async sendMessages() {
     this.collectLogs()
-    if (this.messages.length) {
-      await this.send({ embeds: this.messages })
-      this.messages = []
+    const embeds = this.getEmbeds()
+    if (embeds.length) {
+      await this.send({ embeds })
     }
+    this.messages = {}
   }
 
   pushToBuffer(data: Data) {
@@ -87,12 +73,13 @@ export class DiscordLogger extends WebhookClient {
     }
     const matchTwo = message.match(this.activityTimeRegex)
     if (matchTwo) {
-      const [, account, time] = matchTwo
+      const [, timestamp, account, activeTime] = matchTwo
       if (this.cache.has(account)) {
-        const seconds = parseFloat(time) / 1000
+        const seconds = parseFloat(activeTime) / 1000
+        const [_date, time] = timestamp.split(' ', 2);
         this.buffer.push({
           process: { name: DiscordLogger.getTitle(data) },
-          data: `${account} banned in ${seconds.toFixed(2)}s`,
+          data: `${time} ${account} banned in ${seconds.toFixed(2)}s`,
           at: Date.now(),
         })
         return
@@ -117,6 +104,9 @@ export class DiscordLogger extends WebhookClient {
     nextMessage.data = nextMessage.buffer.filter(Boolean).join('\n')
     delete nextMessage.buffer
 
-    this.createMessage(nextMessage)
+    if (!this.messages[nextMessage.process.name]) {
+      this.messages[nextMessage.process.name] = []
+    }
+    this.messages[nextMessage.process.name].push(nextMessage)
   }
 }

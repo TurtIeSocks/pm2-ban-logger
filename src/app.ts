@@ -13,7 +13,7 @@ io.initModule({}, (err: Error) => {
   const conf = io.getConfig() as Config
 
   conf.buffer_seconds =
-    conf.buffer_seconds && conf.buffer_seconds > 0 && conf.buffer_seconds < 5
+    conf.buffer_seconds && conf.buffer_seconds > 0
       ? conf.buffer_seconds
       : 1
 
