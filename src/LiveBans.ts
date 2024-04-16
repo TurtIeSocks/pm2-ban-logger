@@ -1,8 +1,9 @@
 import { WebhookClient, APIEmbed } from 'discord.js'
 import stripAnsi from 'strip-ansi'
 import { ObliviousSet } from 'oblivious-set'
+import NodeCache from 'node-cache'
 
-import { Data, LogInfo, Message } from './types'
+import { Data, LastUsedCache, LogInfo, Message } from './types'
 
 export class LiveBans extends WebhookClient {
   messages: Record<string, Data[]>
@@ -10,9 +11,12 @@ export class LiveBans extends WebhookClient {
   color: number
 
   private cache: ObliviousSet<string> = new ObliviousSet(30_000)
+  private loginCache: NodeCache = new NodeCache({ stdTTL: 60 * 60 * 12 })
   private bannedAccountRegex = /Account (\S+) marked as banned/
   private activityTimeRegex =
     /(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \[.*\] User (\S+) .*Active Time (\d+\.\d+)/
+  private logLineRegex =
+    /for user (\S+) \[.*last selected: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} \+\d{4} UTC) last released: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} \+\d{4} UTC)\]/
 
   constructor(url: string) {
     super({ url })
@@ -65,29 +69,45 @@ export class LiveBans extends WebhookClient {
       return null
     }
     const message = stripAnsi(LiveBans.ensureString(data.data))
-    const matchOne = message.match(this.bannedAccountRegex)
+    const matchOne = message.match(this.logLineRegex)
     if (matchOne) {
-      this.cache.add(matchOne[1])
+      const [, account, lastSelected, lastReleased] = matchOne
+      this.loginCache.set(account, { lastSelected, lastReleased })
+      console.log(lastSelected, lastReleased)
       return null
     }
-    const matchTwo = message.match(this.activityTimeRegex)
+    const matchTwo = message.match(this.bannedAccountRegex)
     if (matchTwo) {
-      const [, timestamp, account, activeTime] = matchTwo
+      this.cache.add(matchTwo[1])
+      return null
+    }
+    const matchThree = message.match(this.activityTimeRegex)
+    if (matchThree) {
+      const [, timestamp, account, activeTime] = matchThree
+      const seconds = parseFloat(activeTime) / 1000
       if (this.cache.has(account)) {
-        const seconds = parseFloat(activeTime) / 1000
         const [_date, time] = timestamp.split(' ', 2)
+        const lastUsedCache: LastUsedCache | undefined = this.loginCache.get(account)
         const process = LiveBans.getTitle(data)
         this.buffer.push({
           process: { name: process },
-          data: `${time} ${account} banned in ${seconds.toFixed(2)}s`,
+          data: `${time} ${account} banned in ${seconds.toFixed(2)}s Last Selected: ${lastUsedCache?.lastSelected || '???'} Last Released: ${lastUsedCache?.lastReleased || '???'}`,
           at: Date.now(),
         })
         return {
+          ...lastUsedCache,
           account,
           activeTime: seconds,
           timestamp: new Date(`${_date}T${time}`),
           process,
         }
+      } else if (seconds < 1) {
+        console.warn(
+          'Account',
+          account,
+          'not found in cache but was only used for:',
+          seconds
+        )
       }
     }
     return null

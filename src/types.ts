@@ -47,7 +47,12 @@ export interface Message extends Data {
   data: string
 }
 
-export interface LogInfo {
+export interface LastUsedCache {
+  lastSelected: Date,
+  lastReleased: Date,
+}
+
+export interface LogInfo extends Partial<LastUsedCache> {
   account: string
   activeTime: number
   timestamp: Date

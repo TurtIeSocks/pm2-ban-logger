@@ -14,54 +14,56 @@ export class Stats extends WebhookClient {
   }
 
   getEmbeds(): APIEmbed[] {
-    return Object.entries(this.stats).map(([name, data]) => {
-      let lessThanOneMinute = 0
-      let lessThanFiveMinutes = 0
-      let lessThanTenMinutes = 0
-      let lessThanOneHour = 0
-      for (const info of data) {
-        if (info.activeTime < 60) {
-          lessThanOneMinute++
-        } else if (info.activeTime < 300) {
-          lessThanFiveMinutes++
-        } else if (info.activeTime < 600) {
-          lessThanTenMinutes++
-        } else {
-          lessThanOneHour++
+    return Object.entries(this.stats)
+      .map(([name, data]) => {
+        let lessThanOneMinute = 0
+        let lessThanFiveMinutes = 0
+        let lessThanTenMinutes = 0
+        let lessThanOneHour = 0
+        for (const info of data) {
+          if (info.activeTime < 60) {
+            lessThanOneMinute++
+          } else if (info.activeTime < 300) {
+            lessThanFiveMinutes++
+          } else if (info.activeTime < 600) {
+            lessThanTenMinutes++
+          } else {
+            lessThanOneHour++
+          }
         }
-      }
-      const fields: APIEmbed['fields'] = []
-      if (lessThanOneMinute) {
-        fields.push({
-          name: 'Less than 1 minute',
-          value: lessThanOneMinute.toLocaleString(),
-        })
-      }
-      if (lessThanFiveMinutes) {
-        fields.push({
-          name: 'Less than 5 minutes',
-          value: lessThanFiveMinutes.toLocaleString(),
-        })
-      }
-      if (lessThanTenMinutes) {
-        fields.push({
-          name: 'Less than 10 minutes',
-          value: lessThanTenMinutes.toLocaleString(),
-        })
-      }
-      if (lessThanOneHour) {
-        fields.push({
-          name: 'Less than 1 hour',
-          value: lessThanOneHour.toLocaleString(),
-        })
-      }
-      return {
-        title: name,
-        color: this.color,
-        fields,
-        timestamp: new Date().toISOString(),
-      }
-    })
+        const fields: APIEmbed['fields'] = []
+        if (lessThanOneMinute) {
+          fields.push({
+            name: 'Less than 1 minute',
+            value: lessThanOneMinute.toLocaleString(),
+          })
+        }
+        if (lessThanFiveMinutes) {
+          fields.push({
+            name: 'Less than 5 minutes',
+            value: lessThanFiveMinutes.toLocaleString(),
+          })
+        }
+        if (lessThanTenMinutes) {
+          fields.push({
+            name: 'Less than 10 minutes',
+            value: lessThanTenMinutes.toLocaleString(),
+          })
+        }
+        if (lessThanOneHour) {
+          fields.push({
+            name: 'Less than 1 hour',
+            value: lessThanOneHour.toLocaleString(),
+          })
+        }
+        return {
+          title: name,
+          color: this.color,
+          fields,
+          timestamp: new Date().toISOString(),
+        }
+      })
+      .filter((embed) => embed.fields.length > 0)
   }
 
   pushToStats(info: LogInfo) {
